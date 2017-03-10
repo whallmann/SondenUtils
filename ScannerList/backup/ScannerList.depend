@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1488711010 source:d:\dropbox\freifunk\github\sondenutils\scannerlist\main.c
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+	<math.h>
+	<time.h>
+

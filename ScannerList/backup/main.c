@@ -31,7 +31,6 @@
 #define HOLDINGMINUTES 10
 #define clrscr() printf("\x1B[2J")
 #define MAXARRAY 200
-#define MAXNOISECOUNTER 100
 
 char static datetimestamp [30];
 struct tm *tmnow;
@@ -51,8 +50,8 @@ int main(int argc, char *argv[])
 
 //----------- Übergabeparameter auslesen und merken ----------------
     // Default-Werte besetzen
-    char VERSIONNUMB[20] = {"1.0"};
-    char VERSIONDATE[20] = {"2017-03-10"};
+    char VERSIONNUMB[20] = {"0.9"};
+    char VERSIONDATE[20] = {"2017-03-05"};
 
     int arg_verbose = 0;
     char arg_BlacklistFile [255];
@@ -69,7 +68,6 @@ int main(int argc, char *argv[])
     char arg_holdingfilename [255];
     arg_holdingfilename[0] = 0;
     int arg_holdingtimer = 10;
-    int arg_noiseAutomatic = 0;
 
     int argindex = 0;
     //-------------------- give help -------------------
@@ -127,15 +125,6 @@ int main(int argc, char *argv[])
       fputs("   has a value of -15 (very loud). This will be taken.",stdout); fputs("\n",stdout);
       fputs("   Set this to -L -50 if you like to check each noise.",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
-      fputs("-n <levelDiffToNoise>",stdout); fputs("\n",stdout);
-      fputs(":: Default: NO. Unit is db (postive value). if given",stdout); fputs("\n",stdout);
-      fputs("   enables the automatic noise level detection and ",stdout); fputs("\n",stdout);
-      fputs("   looks for signales adding <levelDiffToNoise> to",stdout); fputs("\n",stdout);
-      fputs("   detected noise. ",stdout); fputs("\n",stdout);
-      fputs("   Sample: noise floor aprox. -35 db. -n 4. Signal ",stdout); fputs("\n",stdout);
-      fputs("   Frequ. over or equal to -31 will be taken.",stdout); fputs("\n",stdout);
-      fputs("   If -n found, the argument -L will be ignored if also there.",stdout); fputs("\n",stdout);
-      fputs("",stdout); fputs("\n",stdout);
       fputs("-o <sdrcfg file name>",stdout); fputs("\n",stdout);
       fputs(":: Default: NO. You have to give a file name for output.",stdout); fputs("\n",stdout);
       fputs("   Its the output file for the dxlChain. This frequencies",stdout); fputs("\n",stdout);
@@ -152,10 +141,7 @@ int main(int argc, char *argv[])
       fputs("   Round the frequency up/down to next full 10 KHz. e.g. 400699 -> 402700",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
       fputs("----------- Samples ---------------------------------",stdout); fputs("\n",stdout);
-      fputs("sudo ./scannerlist -L -30 -H /tmp/holding.txt -o ~/dxlAPRS/sdrcfg.txt",stdout); fputs("\n",stdout);
-      fputs("     -f /tmp/scan.csv -v >> /tmp/scannerlist.log",stdout); fputs("\n",stdout);
-      fputs("",stdout); fputs("\n",stdout);
-      fputs("sudo ./scannerlist -n 5 -H /tmp/holding.txt -o ~/dxlAPRS/sdrcfg.txt",stdout); fputs("\n",stdout);
+      fputs("sudo ./scannerlist -L -50 -H /tmp/holding.txt -o ~/dxlAPRS/sdrcfg.txt",stdout); fputs("\n",stdout);
       fputs("     -f /tmp/scan.csv -v >> /tmp/scannerlist.log",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
       fputs("Usage hint of rtl_power:",stdout); fputs("\n",stdout);
@@ -172,7 +158,7 @@ int main(int argc, char *argv[])
     printf("Argv[0] =%s\n",argv[0]);
     for(argindex=1; argindex < argc; argindex++)
     {
-      // printf("%02i=%s\n",argindex,argv[argindex]);
+      printf("%02i=%s\n",argindex,argv[argindex]);
       // 0 : programmname
       if (strcmp(argv[argindex],"-v") == 0)
       {
@@ -234,14 +220,6 @@ int main(int argc, char *argv[])
            arg_signallevel = atoi(argv[argindex+1]);
          }
       }
-      if (strcmp(argv[argindex],"-n") == 0)
-      {
-         if(argindex+1 < argc)
-         {
-           arg_noiseAutomatic = atoi(argv[argindex+1]);
-           // arg_signallevel will be ignored later
-         }
-      }
       if (strcmp(argv[argindex],"-h") == 0)
       {
          if(argindex+1 < argc)
@@ -265,7 +243,6 @@ int main(int argc, char *argv[])
       printf("-a %i \n", arg_afc);
       printf("-b %ld \n", arg_bandwithHz);
       printf("-L %i \n", arg_signallevel);
-      printf("-n %i \n", arg_noiseAutomatic);
       printf("-o %s \n", arg_outputfilename);
       printf("-f %s \n", arg_inputfilename);
       printf("-H %s \n", arg_holdingfilename);
@@ -369,19 +346,12 @@ int main(int argc, char *argv[])
 //------------------------------------------------------------------
     static char zeile[PUFFERLEN];
     zeile[0] = 0;
-    static char zeileBAK[PUFFERLEN];
-    zeileBAK[0] = 0;
     char *zeiger;
     int i = 1;
     int j = 0;
     int myint = -1;
-    int bGoodLevel = 0;     // boolean : false
     // int dBListe [3000];  // for future use maybe
     int Anzahl_dbListe = 0;  // 1...n
-    int dBNoiseBlocks [MAXARRAY];    // alle 100 Messwerte den Durchschnitt merken
-    int Anzahl_dbNoiseBlocks = 0;
-    int dbNoiseIntervall = 0;  // Zähler für einen 100 Block
-    int dbNoiseSummary = 0;    // Summe innerhalb eines 100 Blocks bilden für Durchschnittsbildung
     double QrgListe [MAXARRAY];
     int Anzahl_QrgListe = 0;
     double NewQrgListe [MAXARRAY];
@@ -414,63 +384,8 @@ int main(int argc, char *argv[])
       while ((feof(f) == 0) && (Anzahl_QrgListe < MAXARRAY))
       {
         // fputs("\n---> No EOF\n", stdout);
-
-        //----------------------------------------------------------------
-        //--- ZEILE ZERLEGEN UND RAUSCHPEGEL DURCHSCHNITT FESTSTELLEN ----
-        //----------------------------------------------------------------
-        fputs("---> Noise detector go\n",stdout);
         i = 1;
-        dbNoiseIntervall = 0;
-        // mit kopie bei strtok arbeiten, weil strtok den String kaputt macht
-        strcpy(zeileBAK, zeile);
-        zeiger = strtok(zeileBAK,",");
-        while(zeiger != NULL)
-        {
-          if (i>=7)   // data fields in csv starts here
-          {
-            rundung = atof(zeiger);
-            rundung = (rundung > (floor(rundung)+0.5f)) ? ceil(rundung) : floor(rundung);
-            myint = rundung;
-            if (dbNoiseIntervall < MAXNOISECOUNTER)
-            {
-              dbNoiseSummary += myint;
-              dbNoiseIntervall++;
-            }
-            else
-            {
-              // STOP: Zähler hat 100 erreicht, Durchschnitt bilden und aufheben
-              rundung = dbNoiseSummary / dbNoiseIntervall;
-              rundung = (rundung > (floor(rundung)+0.5f)) ? ceil(rundung) : floor(rundung);
-              dBNoiseBlocks [Anzahl_dbNoiseBlocks] = rundung;
-              printf("## Noise Block %i = %i\n",Anzahl_dbNoiseBlocks,dBNoiseBlocks [Anzahl_dbNoiseBlocks]);
-              dbNoiseIntervall = 0;
-              dbNoiseSummary = 0;
-              Anzahl_dbNoiseBlocks++;
-            }
-          }
-          zeiger = strtok(NULL, ",");
-          i++;
-        }
-        //----------------------------------------------------------------
-        // Für angefangene 100er Blocks noch einen Durchschnittswert bilden
-        //----------------------------------------------------------------
-        if((dbNoiseSummary > 0) && (dbNoiseIntervall > 0))
-        {
-          rundung = dbNoiseSummary / dbNoiseIntervall;
-          rundung = (rundung > (floor(rundung)+0.5f)) ? ceil(rundung) : floor(rundung);
-          dBNoiseBlocks [Anzahl_dbNoiseBlocks] = rundung;
-          printf("##[Fin] Noise Block %i = %i\n",dbNoiseIntervall,dBNoiseBlocks [Anzahl_dbNoiseBlocks]);
-          dbNoiseIntervall = 0;
-          dbNoiseSummary = 0;
-          Anzahl_dbNoiseBlocks++;
-        }
-        //---- ZEILE NOCHMAL ZERLEGEN UND SIGNALE FESTSTELLEN -------
-        i = 1;
-        j = 0; // zählt hier alle 100 Intervalle einen NoiseBlock hoch
-        dbNoiseIntervall = 0;
-        // mit kopie bei strtok arbeiten, weil strtok den String kaputt macht
-        strcpy(zeileBAK, zeile);
-        zeiger = strtok(zeileBAK,",");
+        zeiger = strtok(zeile,",");
         while(zeiger != NULL)
         {
           if (i==3)
@@ -487,18 +402,10 @@ int main(int argc, char *argv[])
             rundung = atof(zeiger);
             rundung = (rundung > (floor(rundung)+0.5f)) ? ceil(rundung) : floor(rundung);
             myint = rundung;
-            bGoodLevel = 0;
-            if (arg_noiseAutomatic > 0)
-            {
-              bGoodLevel = (myint >= (dBNoiseBlocks [dbNoiseIntervall] + arg_noiseAutomatic));
-              //fputs("N",stdout);
-            }
-            else
-            {
-              bGoodLevel = (myint >= arg_signallevel);
-              //fputs("L",stdout);
-            }
-            if(bGoodLevel)
+            //Save in dBListe we need later, if we going to create waterfall diagramms etc.
+            //also need all data for calculate noise floor
+            //dBListe[Anzahl_dbListe] = myint;
+            if(myint >= arg_signallevel)
             {
               // calculate frequency with origin intervall from csv file
               QrgListe[Anzahl_QrgListe] = startfrequenz + realIntervall * (i-6);
@@ -512,19 +419,11 @@ int main(int argc, char *argv[])
               Anzahl_QrgListe++;
             }
             Anzahl_dbListe++;
-            j++; // alle 100 einen dBNoiseBlocks hochzählen in dbNoiseIntervall
-            if(j >= MAXNOISECOUNTER)
-            {
-              if( dbNoiseIntervall+1 < Anzahl_dbNoiseBlocks)
-                dbNoiseIntervall++;
-              j = 0;
-            }
+            //if (i % 10 == 0) printf("\n");
           }
           zeiger = strtok(NULL, ",");
           i++;
         }
-
-
         // nächste Zeile lesen
         if(arg_verbose) fputs("--- read line \n", stdout);
         fgets(&zeile[0], PUFFERLEN-2, f);
