@@ -1,0 +1,113 @@
+#!/bin/bash
+
+gpsdir=/tmp/gps
+rinexdir=/var/sonde/rinex
+
+delay="-1 hour"
+dayofyear=$(date -d "$delay" -u +%j)
+year=$(date -d "$delay" -u +%Y)
+year_short=$(date -d "$delay" -u +%y)
+hour=$(date -d "$delay" -u +%H)
+dayaschar_u=$(printf "\x$(printf %x $(expr 65 + $hour))")
+dayaschar_l=$(printf "\x$(printf %x $(expr 97 + $hour))")
+
+date
+date -u
+
+## BUND Server
+filename3=brdc${dayofyear}0.${year_short}n.Z
+ftpurl3=igs.bkg.bund.de/NTRIP/BRDC/${year}/${dayofyear}/${filename3}
+
+## NASA Server
+filename1=hour${dayofyear}0.${year_short}n.Z
+ftpurl1=cddis.gsfc.nasa.gov/gnss/data/hourly/${year}/${dayofyear}/${filename1}
+
+## NOAA Server
+filename2=brdc${dayofyear}0.${year_short}n.gz
+ftpurl2=ftp.ngs.noaa.gov/cors/rinex/${year}/${dayofyear}/${filename2}
+
+## PECNY Server
+filename0=BRDC${dayofyear}${dayaschar_l}.${year_short}n.Z
+ftpurl0=ftp.pecny.cz/LDC/nrtdata/${year_short}${dayofyear}/${dayaschar_u}/${filename0}
+
+function unpack {
+	#unpack
+	if [ -s ${gpsdir}/${filename} ];then # file exists and > 0
+		gunzip -c ${gpsdir}/${filename} > ${rinexdir}/rinex.txt
+		zipres=$?
+		echo "Unzip Errorcode:" $zipres
+		if [ $zipres -gt 0 ]; then #zip NOK
+			echo "unZIP NOK"
+		else
+			echo "unZIP OK"
+			cp ${rinexdir}/rinex.txt /tmp
+			cp ${gpsdir}/${filename} ${rinexdir}/rinex.Z
+		fi
+		#head -8 /var/www/gps/rinex.txt
+		echo "-----------------------------------------------------"
+	fi
+}
+
+function getftp {
+	# mirror rinex.z
+	echo "Day:" $dayofyear
+	echo "Year:" $year
+	echo "Year-Short:" $year_short
+	echo "File:" $filename
+	#echo "Downloading:" $ftpurl
+	
+	ftpcopy ftp://${ftpurl} ${gpsdir}
+	ftpres=$?
+
+	echo "FTP Errorcode:" $ftpres
+	if [ $ftpres -gt 0 ]; then #ftp NOK
+		echo "FTP NOK Retry next Mirror"
+		$0 $nextrun
+	else
+		echo "FTP OK"
+		unpack
+	fi
+}
+
+if [ $# -lt 1 ];then
+	ftpurl=$ftpurl0
+	filename=$filename0
+	nextrun=1
+	getftp
+else
+	case $1 in
+		1)
+		ftpurl=$ftpurl1
+		filename=$filename1
+		nextrun=2
+		getftp
+		;;
+		2)
+		ftpurl=$ftpurl2
+		filename=$filename2
+		nextrun=0
+		getftp
+		;;
+		3)
+		ftpurl=$ftpurl3
+		filename=$filename3
+		nextrun=0
+		getftp
+		;;
+		0)
+		ftpurl=$ftpurl0
+		filename=$filename0
+		nextrun=1
+		getftp
+		;;
+		*)
+		exit 1
+		;;
+	esac
+fi
+
+
+
+# clean up old files
+ls -t $gpsdir/*.gz | sed '1,0d' | xargs rm -r 2>/dev/null
+ls -t $gpsdir/*.Z | sed '1,0d' | xargs rm -r 2>/dev/null
