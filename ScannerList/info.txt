@@ -1,0 +1,43 @@
+---------------------------- Historie Deutsch --------------------------
+
+Kopieren nach dxlAPRS/src
+übersetzen mit:
+gcc -o scannerlist scannerlist.c -lm
+
+Parameter: Keine Änderung
+
+version 1.01 / 04.01.2018 / folgende internen Änderungen:
+- Abstände beim Scann zwischen Signalen von 3 auf 4 KHz erhöht bevor angenommen wird das sei ein neues Signal (M10)
+- Bandbreite bei automatischer Erkennung wird nicht mehr um 3 KHz reduziert wenn > 9 KHz. 
+- NEU: Kürzung der Bandbreite auf 30 KHz nur dann, wenn breiter als 30 KHz
+- Whiteliste: Bandbreite wird in die Ausgabe mit übernommen (überschreibt auch automatisch erkannte Breite)
+- Signalbreite > 12 KHz, dann wird AFC auf 0 gesetzt.
+
+
+23.11.2018
+
+---------------------------- history english --------------------------
+
+copy to dxlAPRS/src
+compile with:
+gcc -o scannerlist scannerlist.c -lm
+
+Params: no change
+
+version 1.01 / 04.01.2018 / the following internal changes:
+
+- Increased scanning distance between signals from 3 to 4 KHz before assuming this is a new signal (M10)
+
+- Bandwidth at automatic detection is no longer reduced by 3 KHz if > 9 KHz. 
+
+- NEW: Reduction of bandwidth to 30 KHz only if wider than 30 KHz.
+
+- Whitelist: Bandwidth is included in the output (also overwrites automatically detected width)
+
+- Signal width > 12 KHz, then AFC is set to 0.
+
+
+
+
+
+------------ end of file --------------------------------------
