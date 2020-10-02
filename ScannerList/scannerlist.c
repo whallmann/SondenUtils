@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 
 //----------- Übergabeparameter auslesen und merken ----------------
     // Default-Werte besetzen
-    char VERSIONNUMB[20] = {"1.1Beta"};
-    char VERSIONDATE[20] = {"2018-11-23"};
+    char VERSIONNUMB[20] = {"1.2"};
+    char VERSIONDATE[20] = {"2020-10-02"};
 
     int arg_verbose = 0;
     char arg_BlacklistFile [255];
@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
     arg_holdingfilename[0] = 0;
     int arg_holdingtimer = 10;
     int arg_noiseAutomatic = 0;
+    int arg_squelchLevel = 0;
 
     int argindex = 0;
     //-------------------- give help -------------------
@@ -141,6 +142,13 @@ int main(int argc, char *argv[])
       fputs("   Its the output file for the dxlChain. This frequencies",stdout); fputs("\n",stdout);
       fputs("   get watched. Write it to the dxlAPRS path. ",stdout); fputs("\n",stdout);
       fputs("   Gets immeadeadly active!",stdout); fputs("\n",stdout);
+      fputs("",stdout); fputs("\n",stdout);
+      fputs("-q <Squelch-Level>",stdout); fputs("\n",stdout);
+      fputs(":: Default: '0'. 0 means squelch in sdrtst is fully open.",stdout); fputs("\n",stdout);
+      fputs("   sdrtst uses always cpu power. Values: 90 = lightly squelch",stdout); fputs("\n",stdout);
+      fputs("   10 = very high squelch, only big signals come through. ",stdout); fputs("\n",stdout);
+      fputs("   Chech values 80 downto 60 in decrements of 10.",stdout); fputs("\n",stdout);
+      fputs("   Watch CPU usages of sdrtst. If you enter a good value, usage decreases enormaly.",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
       fputs("-v ",stdout); fputs("\n",stdout);
       fputs(":: Verbose infos on console.",stdout); fputs("\n",stdout);
@@ -242,6 +250,13 @@ int main(int argc, char *argv[])
            // arg_signallevel will be ignored later
          }
       }
+      if (strcmp(argv[argindex],"-q") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           arg_squelchLevel = atoi(argv[argindex+1]);
+         }
+      }
       if (strcmp(argv[argindex],"-h") == 0)
       {
          if(argindex+1 < argc)
@@ -270,6 +285,7 @@ int main(int argc, char *argv[])
       printf("-f %s \n", arg_inputfilename);
       printf("-H %s \n", arg_holdingfilename);
       printf("-h %i \n", arg_holdingtimer);
+      printf("-q %i \n", arg_squelchLevel);
       fputs("\n--------- Parameter -------------\n",stdout);
     }
     int filefound = 0;
@@ -976,12 +992,12 @@ int main(int argc, char *argv[])
           // Aufbau: Frequenz in MHZ, AFC+/-, unwichtig, unwichtig, Filterbreite in Herz
           //      ... AFC: bei M10 Sonden mit 27 KHz Bandbreite spielt die AFC verrückt und muss ausgeschaltet werden mit "0"
           if (aktBandwidth > 15000.0f) {
-            sprintf(ausgabezeile, "f %6.3f 0 0 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f, aktBandwidth );
+            sprintf(ausgabezeile, "f %6.3f 0 %i 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f,  arg_squelchLevel, aktBandwidth );
             if (arg_verbose)
               printf("Info: Bandwith higher then 15 KHz, so no AFC needed \n");
           }
           else {
-          sprintf(ausgabezeile, "f %6.3f %i 0 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f, arg_afc, aktBandwidth );
+          sprintf(ausgabezeile, "f %6.3f %i %i 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f, arg_afc, arg_squelchLevel , aktBandwidth );
           }
           if (arg_verbose)
             printf("%s",ausgabezeile);
