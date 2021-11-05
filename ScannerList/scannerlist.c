@@ -18,6 +18,7 @@
  * -L <above signallevel>Default: -20 / Units in db, detector for activities only for signals who are above this level
  * -h <minutes>         Default: 10. Holds frequencies with action for that minutes if there is a gap for a short time
  * -H <holdingfilename> file name nessesery for holding the frequencies with timestamps.
+ * --help               full details for all parameter
 */
 #include <stdio.h>
 #include <string.h>
@@ -51,8 +52,8 @@ int main(int argc, char *argv[])
 
 //----------- Übergabeparameter auslesen und merken ----------------
     // Default-Werte besetzen
-    char VERSIONNUMB[20] = {"1.2"};
-    char VERSIONDATE[20] = {"2020-10-02"};
+    char VERSIONNUMB[20] = {"1.3"};
+    char VERSIONDATE[20] = {"2022-11-02"};
 
     int arg_verbose = 0;
     char arg_BlacklistFile [255];
@@ -72,6 +73,14 @@ int main(int argc, char *argv[])
     int arg_noiseAutomatic = 0;
     int arg_squelchLevel = 0;
 
+	// Waterfall-py parameter
+	int arg_waterfall = 0;
+	char arg_wf_from [15] = {"402.000"};
+	char arg_wf_to [15] = {"404.000"};
+	char arg_wf_picbw [15] = {"2500"};
+	char arg_wf_speed [5] = {"1"};
+	char arg_wf_zfbw [15] = {"6000"};  // 3000,6000,12000
+
     int argindex = 0;
     //-------------------- give help -------------------
     if ( ((argc==2) && (argv[1]="--help")) || (argc==1))
@@ -86,11 +95,12 @@ int main(int argc, char *argv[])
       fputs("!          Date    ",stdout);
       fputs(VERSIONDATE,stdout);
       fputs("                         !",stdout); fputs("\n",stdout);
+      fputs("           NEW: with dxl-Waterfall-py support          ",stdout); fputs("\n",stdout);
       fputs("=======================================================",stdout); fputs("\n",stdout);
       fputs("This program uses the output of rtl_power and detects  ",stdout); fputs("\n",stdout);
       fputs("weather sonde signals, put them into a sdrcfg-file and ",stdout); fputs("\n",stdout);
       fputs("holds frequencies for a defined time, if there is a gap ",stdout); fputs("\n",stdout);
-      fputs("on reception. More usage hints, in README.TXT ",stdout); fputs("\n",stdout);
+      fputs("on reception. More usage hints: see README.TXT ",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
       fputs("Parameters, and what they are good for:",stdout); fputs("\n",stdout);
       fputs("-a <afc-Wert>",stdout); fputs("\n",stdout);
@@ -158,6 +168,24 @@ int main(int argc, char *argv[])
       fputs("   always be delivered in output (-o) list (whitelist)",stdout); fputs("\n",stdout);
       fputs("   One frequency per line. Units in KHz (ex: 402700)",stdout); fputs("\n",stdout);
       fputs("   Round the frequency up/down to next full 10 KHz. e.g. 400699 -> 402700",stdout); fputs("\n",stdout);
+      fputs("-WD",stdout); fputs("\n",stdout);
+      fputs(":: Activates the DXL-Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("-WF <freq MHZ>",stdout); fputs("\n",stdout);
+      fputs(":: Default: <402.000>. Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("   From start frequency - for dxl-Waterfall pic",stdout); fputs("\n",stdout);
+      fputs("-WT <freq MHZ>",stdout); fputs("\n",stdout);
+      fputs(":: Default: <404.000>. Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("   to end frequency - for dxl-Waterfall pic",stdout); fputs("\n",stdout);
+      fputs("-WB <Herz>",stdout); fputs("\n",stdout);
+      fputs(":: Default: <2500>. Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("   Bandwith in Hz per pic column (vertical Pixel column)",stdout); fputs("\n",stdout);
+      fputs("-WS <1..6>",stdout); fputs("\n",stdout);
+      fputs(":: Default: <1>. Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("   vertical speed factor. Value 1 = 2ms per column (fast recording). Value 6 = 12ms per column. ",stdout); fputs("\n",stdout);
+	  fputs("   The recorded pic gets less resolution on higher value.",stdout); fputs("\n",stdout);
+      fputs("-WZ <Herz>",stdout); fputs("\n",stdout);
+      fputs(":: Default: <6000>. Waterfall.py-Support",stdout); fputs("\n",stdout);
+      fputs("   ZF-Bandwith value in Hz. Reduce CPU c onsumption by use a multiple of 3000 (e.g.: 3000,6000,12000)",stdout); fputs("\n",stdout);
       fputs("",stdout); fputs("\n",stdout);
       fputs("----------- Samples ---------------------------------",stdout); fputs("\n",stdout);
       fputs("sudo ./scannerlist -L -30 -H /tmp/holding.txt -o ~/dxlAPRS/sdrcfg.txt",stdout); fputs("\n",stdout);
@@ -257,6 +285,48 @@ int main(int argc, char *argv[])
            arg_squelchLevel = atoi(argv[argindex+1]);
          }
       }
+	  
+		// --- waterfall support for dxl-Waterfall-py
+      if (strcmp(argv[argindex],"-WD") == 0)
+      {
+        arg_waterfall = 1;
+      }
+      if (strcmp(argv[argindex],"-WF") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           strcpy(&arg_wf_from[0], argv[argindex+1]);
+         }
+      }
+      if (strcmp(argv[argindex],"-WT") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           strcpy(&arg_wf_to[0], argv[argindex+1]);
+         }
+      }
+      if (strcmp(argv[argindex],"-WB") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           strcpy(&arg_wf_picbw[0], argv[argindex+1]);
+         }
+      }
+      if (strcmp(argv[argindex],"-WS") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           strcpy(&arg_wf_speed[0], argv[argindex+1]);
+         }
+      }
+      if (strcmp(argv[argindex],"-WZ") == 0)
+      {
+         if(argindex+1 < argc)
+         {
+           strcpy(&arg_wf_zfbw[0], argv[argindex+1]);
+         }
+      }
+	  
       if (strcmp(argv[argindex],"-h") == 0)
       {
          if(argindex+1 < argc)
@@ -286,6 +356,13 @@ int main(int argc, char *argv[])
       printf("-H %s \n", arg_holdingfilename);
       printf("-h %i \n", arg_holdingtimer);
       printf("-q %i \n", arg_squelchLevel);
+      printf("-WD %i \n", arg_waterfall);
+      printf("-WF %s \n", arg_wf_from);
+      printf("-WT %s \n", arg_wf_to);
+      printf("-WB %s \n", arg_wf_picbw);
+      printf("-WS %s \n", arg_wf_speed);
+      printf("-WZ %s \n", arg_wf_zfbw);
+
       fputs("\n--------- Parameter -------------\n",stdout);
     }
     int filefound = 0;
@@ -990,11 +1067,11 @@ int main(int argc, char *argv[])
           }
           // Dieses Format wird vom dxlChain als Input verlangt
           // Aufbau: Frequenz in MHZ, AFC+/-, unwichtig, unwichtig, Filterbreite in Herz
-          //      ... AFC: bei M10 Sonden mit 27 KHz Bandbreite spielt die AFC verrückt und muss ausgeschaltet werden mit "0"
-          if (aktBandwidth > 15000.0f) {
-            sprintf(ausgabezeile, "f %6.3f 0 %i 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f,  arg_squelchLevel, aktBandwidth );
+          //      ...ab 12 KHz Bandbreite die AFC erhöhen
+          if (aktBandwidth > 12000.0f) {
+            sprintf(ausgabezeile, "f %6.3f %i %i 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f,  (arg_afc+3), arg_squelchLevel, aktBandwidth );
             if (arg_verbose)
-              printf("Info: Bandwith higher then 15 KHz, so no AFC needed \n");
+              printf("Info: Bandwith higher then 12 KHz, so add AFC plus 3 KHz \n");
           }
           else {
           sprintf(ausgabezeile, "f %6.3f %i %i 0 %-6.0f\n", HoldingQrgListe[i] / 1000.0f, arg_afc, arg_squelchLevel , aktBandwidth );
@@ -1004,6 +1081,14 @@ int main(int argc, char *argv[])
           fputs(ausgabezeile, f);
         }
       }
+	  if (arg_waterfall) {
+		 // Zeile anhängen für dxl-waterfall-py support
+		 sprintf(ausgabezeile, "s %s %s %s %s %sf", arg_wf_from, arg_wf_to, arg_wf_picbw, arg_wf_speed, arg_wf_zfbw );
+		 strcat(ausgabezeile, "\n");
+		 if (arg_verbose)
+            printf("%s",ausgabezeile);
+		 fputs(ausgabezeile, f);
+	  }
       fclose(f);
     }
     else

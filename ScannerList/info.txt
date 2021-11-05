@@ -6,12 +6,79 @@ gcc -o scannerlist scannerlist.c -lm
 
 Parameter: Keine Änderung
 
+Version 1.3
+
+version 1.03 / 2021-11-02
+
+Neue Parameter:
+
+- WD  - Schaltet die dxl waterfall.py Unterstützung ein
+:: Was ist das?  Erstellt ein PNG Bild als Wasserfalldiagramm anhand der Empfangenen Sondendaten der DXL Programme
+Genaue Details bitte der Beschreibung von Attila entnehmen:
+http://dxlwiki.dl1nux.de/index.php?title=Waterfall.py
+dann gelten die folgenden Parameter für die es jeweils immer einen Standard-Wert gibt
+- WF  - Frequenz von   
+- WT  - Frequenz bis
+- WB  - Bandbreite für Wasserfalldiagram
+- WS  - Geschwindigkeit der Datenzunahme im Bild
+- WZ  - ZF Bandbreite
+:: alle diese Angaben sind Zeichenketten und keine Zahlen. Sie werden unverändert als neue Zeichenkette an die sdrcfg.txt Datei angehängt
+
+Parameter Beispiel:
+./scannerlist -WD -WF 402.000 -WT 404.000 -WB 2500 -WS 1 - WZ 6000 ......
+Output Beispiel:
+# Created: 05.11.2021 20:36:12
+f ....
+s 402.000 404.000 2500 1 6000f
+
+
+
+========================================================================================
+
+Version 1.2 
+
+version 1.02 / 02.10.2020 /
+
+Neuer Parameter: 
+ „-q nnn“  Squelchwert für die sdrcfg.txt (Frequenzliste)
+
+Standard: 0  (Parameter nicht gesetzt)
+Squelch leicht geschlossen: 90
+In Stufen immer stärker geschlossen, wenn Wert reduziert wird
+Empfohlen: 90/80 durch probieren ist das Optimum zu finden.
+Test:   sdrtst sollte laufen und eine sdrcfg.txt mit einigen Einträgen 3-4 enthalten.
+CPU Nutzung von sdrtst (Command: top ) liegt im weit zweistelligen Bereich
+Im Editor die sdrcfg.txt mit verschiedenen Squelchwerten speichern und immer wieder die CPU Nutzung prüfen.
+Sobald der Wert stark abfällt, habt ihr einen guten Wert gefunden. 
+
+---------------------------- history english --------------------------
+
+Version 1.2 
+
+version 1.2 / 02.10.2020 /
+
+New parameter: 
+ "-q nnn" squelch value for the sdrcfg.txt (frequency list)
+
+Default: 0 (parameter not set)
+Squelch slightly closed: 90
+Closed more and more in steps of 10 counters
+Recommended: 90/80 by trying to find the optimum.
+Test: sdrtst should run and a sdrcfg.txt contains some entries 3-4.
+CPU usage of sdrtst (Command: top ) is in the two digit range
+In the editor save the sdrcfg.txt with different squelch values and check the CPU usage again and again.
+As soon as the value decreases strongly, you have found a good value. 
+
+========================================================================================
+Version 1.01
+
+
 version 1.01 / 04.01.2018 / folgende internen Änderungen:
 - Abstände beim Scann zwischen Signalen von 3 auf 4 KHz erhöht bevor angenommen wird das sei ein neues Signal (M10)
 - Bandbreite bei automatischer Erkennung wird nicht mehr um 3 KHz reduziert wenn > 9 KHz. 
 - NEU: Kürzung der Bandbreite auf 30 KHz nur dann, wenn breiter als 30 KHz
 - Whiteliste: Bandbreite wird in die Ausgabe mit übernommen (überschreibt auch automatisch erkannte Breite)
-- Signalbreite > 12 KHz, dann wird AFC auf 0 gesetzt.
+- Signalbreite > 12 KHz, dann wird AFC um Zähler 3 erhöht (-a Parameter) gesetzt.
 
 
 23.11.2018
