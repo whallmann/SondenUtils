@@ -52,8 +52,8 @@ int main(int argc, char *argv[])
 
 //----------- Übergabeparameter auslesen und merken ----------------
     // Default-Werte besetzen
-    char VERSIONNUMB[20] = {"1.3"};
-    char VERSIONDATE[20] = {"2022-11-02"};
+    char VERSIONNUMB[20] = {"1.3a"};
+    char VERSIONDATE[20] = {"2021-11-02"};
 
     int arg_verbose = 0;
     char arg_BlacklistFile [255];
@@ -1083,7 +1083,7 @@ int main(int argc, char *argv[])
       }
 	  if (arg_waterfall) {
 		 // Zeile anhängen für dxl-waterfall-py support
-		 sprintf(ausgabezeile, "s %s %s %s %s %sf", arg_wf_from, arg_wf_to, arg_wf_picbw, arg_wf_speed, arg_wf_zfbw );
+		 sprintf(ausgabezeile, "s %s %s %s %s %s", arg_wf_from, arg_wf_to, arg_wf_picbw, arg_wf_speed, arg_wf_zfbw );
 		 strcat(ausgabezeile, "\n");
 		 if (arg_verbose)
             printf("%s",ausgabezeile);
