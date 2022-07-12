@@ -19,6 +19,10 @@
  * -h <minutes>         Default: 10. Holds frequencies with action for that minutes if there is a gap for a short time
  * -H <holdingfilename> file name nessesery for holding the frequencies with timestamps.
  * --help               full details for all parameter
+
+Version 1.4 
+Bug:  If Debuginfo shows: "INFO: No frequencies detected" the program was aborted and no more sdrcfg files are written
+      So no abort now after no signals found. Still check holdinglist white- and blacklist and write sdrcfg files for dxl-Sonde
 */
 #include <stdio.h>
 #include <string.h>
@@ -52,8 +56,8 @@ int main(int argc, char *argv[])
 
 //----------- Übergabeparameter auslesen und merken ----------------
     // Default-Werte besetzen
-    char VERSIONNUMB[20] = {"1.3a"};
-    char VERSIONDATE[20] = {"2021-11-02"};
+    char VERSIONNUMB[20] = {"1.4"};
+    char VERSIONDATE[20] = {"2022-07-05"};
 
     int arg_verbose = 0;
     char arg_BlacklistFile [255];
@@ -454,7 +458,7 @@ int main(int argc, char *argv[])
 
     if(needabort)
     {
-      fputs("ERROR: Program aborts. To few good parameters\n",stdout);
+      fputs("ERROR: Program aborts. To less good parameters\n",stdout);
       //fgetc(stdin);
       return EXIT_FAILURE;
     }
@@ -627,12 +631,22 @@ int main(int argc, char *argv[])
 
     }
     //--------------------------------------------------------------
+	// ERKLÄRUNGEN
+	// In der QrgListe sind alle Frequenzen deren Pegel über dem Rauschen ist.
+	// Bei einem Sondensignal liegen mehrere khz nebeneinander in der QRG Liste vor. 
+	// Es kann mal Lücken geben weil Signale getaktet oder auf ihre Breite gesehen unterschiedliche Pegel aufweisen.
+	// DFM: 6 KHz durchgehende Belegung. Die Ränder sind etwas lauter als die Mitte. 
+	// RS41: 9 KHz getaktet, sonst wie DFM
+	// M20:  16 KHz mit drei Peeks auf der Breite. Ist so ein Signal schwach, tauchen nur 3 x 3 KHz Eisberge aus dem Rauschen auf
+	// ...... Die Abstände der Eisberge werden als zusammengehörig angesehen, wenn deren Peaks nicht weiter als 4 Khz auseinander sind.
+	//
+	// ERKENNUNG:
     // Frequenzliste nun nach Sonden-Signalen durchsuchen
     // Erkennungsmuster
     // Vom aktuellen Signal aus den Array scannen
     // nächste QRG darf nicht weiter als 2 KHz entfernt sein, sonst diese als neuen Startwert nehmen
-    // Unteren Wert merken wenn nächstes Signal max 3 KHz entfernt
-    // weiter im Index suchen bis Signal mehr als 3 KHz entfernt
+    // Unteren Wert merken wenn nächstes Signal max 4 KHz entfernt
+    // weiter im Index suchen bis Signal mehr als 4 KHz entfernt
     // dann aktuellen Wert als Obergrenze nehmen
     // Signalbreite ausrechnen und Mittelwert bestimmen
     // Mittelwert auf nächste 10 KHz runden, da Sondenraster = 10 Khz ist
@@ -644,20 +658,20 @@ int main(int argc, char *argv[])
     if(Anzahl_QrgListe > 0)
     {
       i = 0;  // erster Index der QrgListe
-      indexQRGblock = 0;   // von hier ab solange in QrgListe suchen bis Listenende oder nächste QRG >= 3 khz Abstand
+      indexQRGblock = 0;   // von hier ab solange in QrgListe suchen bis Listenende oder nächste QRG >= 4 khz Abstand
       while ((i < Anzahl_QrgListe) && (Anzahl_NewQrgListe < MAXARRAY))
       {
         untereQRG = QrgListe[indexQRGblock];
         if (arg_verbose) printf(":: lower f %9.0f\n",untereQRG);
 
         //     noch ein Index hinter dem aktuellen?     Ist die nächste QRG dicht genug dran?
-        while((indexQRGblock < Anzahl_QrgListe-1) && ((QrgListe[indexQRGblock+1] - QrgListe[indexQRGblock]) < 4.0f))
+        while((indexQRGblock < Anzahl_QrgListe-1) && ((QrgListe[indexQRGblock+1] - QrgListe[indexQRGblock]) < 5.0f))
         {
           indexQRGblock++;
         }
         if (arg_verbose) printf(":: upper f %9.0f, at index %i, \n",QrgListe[indexQRGblock],indexQRGblock);
         // Hier angekommen: QRG Diff zu hoch oder Listenende
-        // Ab 3 hintereinander folgende Frequenzen wird diese in die NewQRGListe mit ihrem Mittelwert übernommen
+        // Ab 3 hintereinander folgende Einträgen wird diese in die NewQRGListe mit ihrem Mittelwert übernommen
         if ((indexQRGblock - i) >= 3)  //
         {
           if (arg_verbose) fputs("big signal detected with more or equal 4 nearby frequ.\n",stdout);
@@ -685,7 +699,8 @@ int main(int argc, char *argv[])
     else
     {
         fputs("\nINFO: No frequencies detected\n",stdout);
-        return EXIT_FAILURE;
+        //=== Kein Exit, da sonst die SDRCFG Datei nicht mehr geschrieben wird.
+		// return EXIT_FAILURE;
     }
     /* ----------------------------------------------------------
     Frequenzen, die einmal erkannt wurden, sollen für x-Minuten gehalten werden.
